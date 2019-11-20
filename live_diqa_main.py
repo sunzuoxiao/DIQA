@@ -1,7 +1,5 @@
 # coding=utf-8
 # created by 'szx' on '12/11/19'
-# Copyright Visionular Inc. All rights reserved
-
 from live_utils import *
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
@@ -149,7 +147,7 @@ def tfrecord_image_label_make(output_path=''):
                 }))
 
                 writer.write(file_record.SerializeToString())
-            
+
         i = i + 1
     print('finished, total image is %s ', i)
 
@@ -215,6 +213,37 @@ def DIQA_model(input,is_train=True):
 
 
     return net_class, error_map
+
+def DIQA_h_f_optimize(input, num_classes, weight, scope="resnet_v2_cpu", is_train=False):
+
+    with tf.variable_scope(scope):
+        with slim.arg_scope([slim.conv2d], padding='SAME',
+                            weights_initializer=initializers.xavier_initializer(),
+                            weights_regularizer=slim.l2_regularizer(0.00001),
+                            activation_fn=None,
+                            biases_initializer=tf.constant_initializer(0.1)):
+
+            net = slim.conv2d(input, 16, 7, stride=1, scope='conv1')
+            net = tf.nn.relu(net)
+
+            # net = slim.max_pool2d(net, [3, 3], stride=2, scope='pool1')
+            # net = slim.batch_norm(net, decay=config.norm_decay, activation_fn=tf.nn.relu, scope='norm1')
+
+            net = bottleneck(net, 16, expand=4, stride=1, use_BN=False, scope="bottleneck1")
+            net = bottleneck(net, 32, expand=4, stride=1, use_BN=False, scope="bottleneck2")
+            net = bottleneck(net, 32, expand=4, stride=1, use_BN=False, scope = "bottleneck3")
+            error_map = slim.conv2d(net, 1, [3, 3], stride=1, scope='error_map')
+            print(error_map)
+            class_map = error_map * weight
+
+            net_class = slim.max_pool2d(class_map, [3, 3], stride=4, scope='pool5')
+
+            net_class = tf.layers.Flatten()(net_class)
+
+            net_logit = tf.layers.dense(net_class, num_classes)
+
+
+    return input, error_map, net_logit
 
 
 def sigmoid_loss(label, logit):

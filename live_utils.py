@@ -1,7 +1,5 @@
 # coding=utf-8
 # created by 'szx' on '11/11/19'
-# Copyright Visionular Inc. All rights reserved
-
 import math
 import typing
 
